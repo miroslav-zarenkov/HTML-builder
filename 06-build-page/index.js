@@ -19,7 +19,6 @@ fs.promises.writeFile(cssFilePath, "", (err) => {
 async function copyFilesAndFolders(src, dest) {
   const items = await fs.promises.readdir(src, { withFileTypes: true });
   await fs.promises.mkdir(dest, { recursive: true });
-  console.log(items);
   for (const item of items) {
     const sourcePath = path.join(src, item.name);
     const destinationPath = path.join(dest, item.name);
@@ -27,7 +26,6 @@ async function copyFilesAndFolders(src, dest) {
       await copyFilesAndFolders(sourcePath, destinationPath);
     } else {
       await fs.promises.copyFile(sourcePath, destinationPath);
-      process.stdout.write(`File copied: ${sourcePath}\n`);
     }
   }
 }
@@ -67,3 +65,37 @@ fs.promises
   .catch((err) => {
     throw err;
   });
+
+const templatePath = path.join(__dirname, "template.html");
+const componentsPath = path.join(__dirname, "./components");
+const indexPath = path.join(distFolderPath, "index.html");
+
+fs.readFile(templatePath, "utf8", async (err, templateContent) => {
+  if (err) {
+    throw err;
+  }
+
+  const files = await fs.promises.readdir(componentsPath);
+  let replacedContent = templateContent;
+  const htmlFiles = files.filter((file) => path.extname(file) === ".html");
+
+  for (let i = 0; i < htmlFiles.length; i++) {
+    const file = htmlFiles[i];
+    const filePath = path.join(componentsPath, file);
+    const fileName = path.parse(file).name;
+    const fileTag = `{{${fileName}}}`;
+    const fileContent = await fs.promises.readFile(filePath, "utf8");
+
+    replacedContent = replacedContent.replace(
+      new RegExp(fileTag, "g"),
+      fileContent
+    );
+  }
+
+  fs.writeFile(indexPath, replacedContent, "utf8", (err) => {
+    if (err) {
+      throw err;
+    }
+  });
+  process.stdout.write("Created index.html\n");
+});
